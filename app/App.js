@@ -1,7 +1,7 @@
 import React,{createContext,useContext,useEffect,useState} from 'react';
 import {View,Text,TextInput,Pressable,ScrollView,Image,ActivityIndicator,Platform} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-const API=process.env.EXPO_PUBLIC_API_URL||'http://localhost:3000';
+const API=process.env.EXPO_PUBLIC_API_URL??(Platform.OS==='web'?'':'http://localhost:3000');
 const C={pri:'#0F3D33',brass:'#B8802A',bg:'#F3F6F4',card:'#fff',ink:'#12261F',mute:'#55655F',line:'#D5DFDA',err:'#B3261E',ok:'#1E7A4F'};
 const D={
 ar:{name:'المزين',tag:'دورك محجوز',login:'دخول',register:'حساب جديد',customer:'عميل',barber:'حلاق',email:'البريد الإلكتروني',pass:'كلمة المرور (٨ أحرف على الأقل)',fullName:'الاسم',phone:'الهاتف',shop:'اسم المحل',area:'المنطقة',human:'اثبت إنك مش روبوت: كام ',out:'خروج',barbers:'الحلاقين',mine:'حجوزاتي',orders:'الحجوزات',svcs:'الخدمات',none:'مفيش بيانات لسه',book:'احجز',s1:'اختار الخدمة',s2:'اختار اليوم والميعاد',today:'النهارده',tomorrow:'بكرة',after:'بعد بكرة',total:'الإجمالي',booked:'تم الحجز ✓ ادفع للحلاق في المحل بعد الحلاقة.',code:'كود التأكيد',cancel:'إلغاء',confirm:'تأكيد',enter:'كود العميل',add:'إضافة',sname:'اسم الخدمة',price:'السعر',mins:'الدقائق',cur:'ج.م',back:'‹ رجوع',km:'كم',st:{booked:'محجوز',done:'تمّت',cancelled:'ملغي'},e:{bot_check:'إجابة التحقق غلط',bad_credentials:'البريد أو كلمة المرور غلط',email_exists:'البريد مستخدم قبل كده',slot_taken:'الميعاد اتحجز حالاً، اختار غيره',invalid:'بيانات ناقصة أو غلط',bad_code:'الكود غلط',too_many_requests:'محاولات كتير، جرّب بعد شوية',auth:'سجّل دخول تاني',generic:'حصل خطأ، جرّب تاني'}},

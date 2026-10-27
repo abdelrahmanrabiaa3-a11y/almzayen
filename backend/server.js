@@ -2,9 +2,10 @@ require('dotenv').config();
 const express=require('express'),helmet=require('helmet'),cors=require('cors'),rate=require('express-rate-limit'),bcrypt=require('bcryptjs'),jwt=require('jsonwebtoken'),crypto=require('crypto'),fs=require('fs'),path=require('path'),{Pool}=require('pg');
 const SECRET=process.env.JWT_SECRET;
 if(!SECRET||SECRET.length<24){console.error('Set JWT_SECRET (24+ chars)');process.exit(1)}
-const pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.PGSSL==='1'?{rejectUnauthorized:false}:false});
+const pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.PGSSL==='1'?{rejectUnauthorized:false}:false,max:process.env.VERCEL?3:10});
 const app=express();app.set('trust proxy',1);
 app.use(helmet({contentSecurityPolicy:false}),cors({origin:process.env.ALLOWED_ORIGIN?process.env.ALLOWED_ORIGIN.split(','):true}),express.json({limit:'20kb'}));
+app.use((q,s,n)=>ready.then(()=>n(),n));// wait for DB init (needed when running as a serverless function)
 // ---- Rate limits (per IP) ----
 const lim=(min,n)=>rate({windowMs:min*60000,limit:n,standardHeaders:true,legacyHeaders:false,message:{error:'too_many_requests'}});
 app.use('/api',lim(1,120));
@@ -14,7 +15,7 @@ const hash=x=>crypto.createHmac('sha256',SECRET).update(String(x)).digest('hex')
 const T={customer:'customers',barber:'barbers',admin:'admins'};
 const auth=roles=>(q,s,n)=>{try{q.user=jwt.verify((q.headers.authorization||'').slice(7),SECRET)}catch{return s.status(401).json({error:'auth'})}if(roles&&!roles.includes(q.user.role))return s.status(403).json({error:'forbidden'});n()};
 // ---- Anti-bot: signed one-time challenge + honeypot field ("website") ----
-const used=new Set();setInterval(()=>used.clear(),600000);
+const used=new Set();setInterval(()=>used.clear(),600000).unref();
 const human=b=>{try{if(b.website||!b.ct||used.has(b.ct))return false;const p=jwt.verify(b.ct,SECRET);used.add(b.ct);return p.h===hash(String(b.ca).trim())}catch{return false}};
 app.get('/api/challenge',lim(1,30),(q,s)=>{const a=1+crypto.randomInt(9),b=1+crypto.randomInt(9);s.json({q:`${a} + ${b}`,ct:jwt.sign({h:hash(a+b),j:crypto.randomUUID()},SECRET,{expiresIn:'3m'})})});
 // ---- Users ----
@@ -96,8 +97,14 @@ app.use('/admin',express.static(path.join(__dirname,'public/admin')));
 app.get('/health',(q,s)=>s.json({ok:true}));
 app.use((e,q,s,n)=>{console.error(e);s.status(500).json({error:'server'})});
 async function init(){
- await pool.query(fs.readFileSync(path.join(__dirname,'schema.sql'),'utf8'));
- const{ADMIN_EMAIL:e,ADMIN_PASSWORD:p}=process.env;
- if(e&&p)await pool.query('insert into admins(email,password_hash) values($1,$2) on conflict(email) do nothing',[e.toLowerCase(),await bcrypt.hash(p,10)]);
+ const c=await pool.connect();
+ try{
+  await c.query('select pg_advisory_lock(7342)');
+  await c.query(fs.readFileSync(path.join(__dirname,'schema.sql'),'utf8'));
+  const{ADMIN_EMAIL:e,ADMIN_PASSWORD:p}=process.env;
+  if(e&&p)await c.query('insert into admins(email,password_hash) values($1,$2) on conflict(email) do nothing',[e.toLowerCase(),await bcrypt.hash(p,10)]);
+ }finally{await c.query('select pg_advisory_unlock(7342)').catch(()=>{});c.release()}
 }
-init().then(()=>app.listen(process.env.PORT||3000,()=>console.log('API on',process.env.PORT||3000))).catch(e=>{console.error(e);process.exit(1)});
+const ready=init();ready.catch(e=>console.error('init failed',e));
+module.exports=app;
+if(!process.env.VERCEL&&require.main===module)ready.then(()=>app.listen(process.env.PORT||3000,()=>console.log('API on',process.env.PORT||3000)),()=>process.exit(1));

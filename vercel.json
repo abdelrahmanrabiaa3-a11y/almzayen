@@ -1,0 +1,13 @@
+{
+ "installCommand":"npm install && npm install --prefix app",
+ "buildCommand":"cd app && npx expo export --platform web --output-dir ../dist",
+ "outputDirectory":"dist",
+ "functions":{"api/index.js":{"includeFiles":"backend/{public/**,schema.sql}"}},
+ "rewrites":[
+  {"source":"/api/(.*)","destination":"/api"},
+  {"source":"/admin","destination":"/api"},
+  {"source":"/admin/(.*)","destination":"/api"},
+  {"source":"/health","destination":"/api"},
+  {"source":"/(.*)","destination":"/index.html"}
+ ]
+}
