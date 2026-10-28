@@ -55,7 +55,7 @@ function Auth({done}){
   {reg&&<Fld v={f.phone} set={set('phone')} ph={t.phone} kb="phone-pad"/>}
   <Fld v={f.email} set={set('email')} ph={t.email} kb="email-address"/><Fld v={f.password} set={set('password')} ph={t.pass} secure/>
   <Tx c={C.mute}>{t.human}{ch?ch.q:'…'}؟</Tx><Fld v={f.ca} set={set('ca')} ph="?" kb="number-pad"/>
-  <Err e={err}/><Btn t={busy?'…':reg?t.register:t.login} onPress={go} dis={busy}/></View>};
+  <Err e={err}/><Btn t={busy?'…':reg?t.register:t.login} onPress={go} dis={false}/></View>};
 
 function Book({s,b,back}){
  const{t,ar}=useX();const[ids,setIds]=useState([]),[day,setDay]=useState(0),[slots,setSlots]=useState([]),[slot,setSlot]=useState(null),[err,setErr]=useState(''),[res,setRes]=useState(null);
